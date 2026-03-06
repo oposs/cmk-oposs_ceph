@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 ## 0.1.0 - 2026-03-06
+## 0.1.0 - 2026-03-06
 ### New
 - Initial release with 7 monitoring services:
   Health, OSD Status, OSD Latency, Scrub, Pool Usage, PG Status, I/O
