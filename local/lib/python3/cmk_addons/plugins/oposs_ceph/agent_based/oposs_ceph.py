@@ -76,6 +76,26 @@ def _render_iops(v: float) -> str:
     return f"{v:.0f}/s"
 
 
+def _pick_node_sections(
+    section_map_status,
+    section_map_osd_perf,
+    section_map_df,
+):
+    """Pick the first cluster node that has status data.
+
+    In cluster mode each section argument is a Mapping[str, section]
+    keyed by node name.  All Ceph nodes report the same cluster-wide
+    data, so we just need one that responded.
+    """
+    for node in section_map_status:
+        status = section_map_status.get(node) or {}
+        if status:
+            osd_perf = (section_map_osd_perf or {}).get(node) or {}
+            df = (section_map_df or {}).get(node) or {}
+            return status, osd_perf, df
+    return {}, {}, {}
+
+
 # ---------------------------------------------------------------------------
 # 1. Ceph Health
 # ---------------------------------------------------------------------------
@@ -117,12 +137,18 @@ def check_oposs_ceph_health(section_oposs_ceph_status, section_oposs_ceph_osd_pe
             )
 
 
+def cluster_check_oposs_ceph_health(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+    s, p, d = _pick_node_sections(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df)
+    yield from check_oposs_ceph_health(s, p, d)
+
+
 check_plugin_oposs_ceph_health = CheckPlugin(
     name="oposs_ceph_health",
     service_name="Ceph Health",
     sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"],
     discovery_function=discover_oposs_ceph_health,
     check_function=check_oposs_ceph_health,
+    cluster_check_function=cluster_check_oposs_ceph_health,
 )
 
 
@@ -165,12 +191,18 @@ def check_oposs_ceph_osd_status(section_oposs_ceph_status, section_oposs_ceph_os
     yield Metric("oposs_ceph_osd_in", num_in)
 
 
+def cluster_check_oposs_ceph_osd_status(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+    s, p, d = _pick_node_sections(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df)
+    yield from check_oposs_ceph_osd_status(s, p, d)
+
+
 check_plugin_oposs_ceph_osd_status = CheckPlugin(
     name="oposs_ceph_osd_status",
     service_name="Ceph OSD Status",
     sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"],
     discovery_function=discover_oposs_ceph_osd_status,
     check_function=check_oposs_ceph_osd_status,
+    cluster_check_function=cluster_check_oposs_ceph_osd_status,
 )
 
 
@@ -243,12 +275,18 @@ def check_oposs_ceph_osd_latency(params, section_oposs_ceph_status, section_opos
         )
 
 
+def cluster_check_oposs_ceph_osd_latency(params, section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+    s, p, d = _pick_node_sections(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df)
+    yield from check_oposs_ceph_osd_latency(params, s, p, d)
+
+
 check_plugin_oposs_ceph_osd_latency = CheckPlugin(
     name="oposs_ceph_osd_latency",
     service_name="Ceph OSD Latency",
     sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"],
     discovery_function=discover_oposs_ceph_osd_latency,
     check_function=check_oposs_ceph_osd_latency,
+    cluster_check_function=cluster_check_oposs_ceph_osd_latency,
     check_ruleset_name="oposs_ceph_osd_latency",
     check_default_parameters={
         "commit_latency_levels": ("fixed", (0.050, 0.100)),
@@ -322,12 +360,18 @@ def check_oposs_ceph_scrub(params, section_oposs_ceph_status, section_oposs_ceph
         yield Result(state=State.OK, notice=detail.get("message", ""))
 
 
+def cluster_check_oposs_ceph_scrub(params, section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+    s, p, d = _pick_node_sections(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df)
+    yield from check_oposs_ceph_scrub(params, s, p, d)
+
+
 check_plugin_oposs_ceph_scrub = CheckPlugin(
     name="oposs_ceph_scrub",
     service_name="Ceph Scrub",
     sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"],
     discovery_function=discover_oposs_ceph_scrub,
     check_function=check_oposs_ceph_scrub,
+    cluster_check_function=cluster_check_oposs_ceph_scrub,
     check_ruleset_name="oposs_ceph_scrub",
     check_default_parameters={
         "not_scrubbed_levels": ("fixed", (10, 50)),
@@ -398,12 +442,18 @@ def check_oposs_ceph_pool_usage(params, section_oposs_ceph_status, section_oposs
         )
 
 
+def cluster_check_oposs_ceph_pool_usage(params, section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+    s, p, d = _pick_node_sections(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df)
+    yield from check_oposs_ceph_pool_usage(params, s, p, d)
+
+
 check_plugin_oposs_ceph_pool_usage = CheckPlugin(
     name="oposs_ceph_pool_usage",
     service_name="Ceph Pool Usage",
     sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"],
     discovery_function=discover_oposs_ceph_pool_usage,
     check_function=check_oposs_ceph_pool_usage,
+    cluster_check_function=cluster_check_oposs_ceph_pool_usage,
     check_ruleset_name="oposs_ceph_pool_usage",
     check_default_parameters={
         "usage_levels": ("fixed", (80.0, 90.0)),
@@ -467,12 +517,18 @@ def check_oposs_ceph_pg_status(section_oposs_ceph_status, section_oposs_ceph_osd
         )
 
 
+def cluster_check_oposs_ceph_pg_status(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+    s, p, d = _pick_node_sections(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df)
+    yield from check_oposs_ceph_pg_status(s, p, d)
+
+
 check_plugin_oposs_ceph_pg_status = CheckPlugin(
     name="oposs_ceph_pg_status",
     service_name="Ceph PG Status",
     sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"],
     discovery_function=discover_oposs_ceph_pg_status,
     check_function=check_oposs_ceph_pg_status,
+    cluster_check_function=cluster_check_oposs_ceph_pg_status,
 )
 
 
@@ -509,10 +565,16 @@ def check_oposs_ceph_io(section_oposs_ceph_status, section_oposs_ceph_osd_perf, 
     )
 
 
+def cluster_check_oposs_ceph_io(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+    s, p, d = _pick_node_sections(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df)
+    yield from check_oposs_ceph_io(s, p, d)
+
+
 check_plugin_oposs_ceph_io = CheckPlugin(
     name="oposs_ceph_io",
     service_name="Ceph I/O",
     sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"],
     discovery_function=discover_oposs_ceph_io,
     check_function=check_oposs_ceph_io,
+    cluster_check_function=cluster_check_oposs_ceph_io,
 )
