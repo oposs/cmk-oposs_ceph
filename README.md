@@ -62,6 +62,23 @@ local/share/check_mk/agents/plugins/
 Enable the "Ceph Monitoring (Linux)" agent bakery rule to automatically deploy
 the agent plugin to hosts. The collection interval is configurable (default 60s).
 
+## Cluster Setup
+
+Since all Ceph mon nodes report the same cluster-wide data, the plugin supports
+Checkmk's native cluster hosts to avoid duplicate services:
+
+1. **Add each mon node** as a regular host in Checkmk
+2. **Deploy the agent plugin** to all mon nodes (via bakery rule or manually)
+3. **Create a cluster host** in Setup > Hosts > Create cluster host
+   - Add the mon nodes as cluster nodes
+4. **Assign the Ceph services to the cluster** in the cluster host's service
+   configuration — use "Clustered services" rules to move the 7 Ceph services
+   from the individual nodes to the cluster host
+5. **Discover services** on the cluster host
+
+The cluster check function picks data from whichever mon node responds. If one
+mon goes down, monitoring continues from the remaining nodes.
+
 ## Agent Data
 
 The agent plugin runs three commands:
