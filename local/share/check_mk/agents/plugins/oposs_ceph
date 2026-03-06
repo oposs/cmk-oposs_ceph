@@ -1,0 +1,14 @@
+#!/bin/bash
+# Agent plugin for Ceph cluster monitoring
+# Collects status, OSD performance, and pool usage data
+
+CEPH=${CEPH_CMD:-ceph}
+
+echo "<<<oposs_ceph_status:sep(0)>>>"
+$CEPH status -f json 2>/dev/null
+
+echo "<<<oposs_ceph_osd_perf:sep(0)>>>"
+$CEPH osd perf -f json 2>/dev/null
+
+echo "<<<oposs_ceph_df:sep(0)>>>"
+$CEPH df detail -f json 2>/dev/null
