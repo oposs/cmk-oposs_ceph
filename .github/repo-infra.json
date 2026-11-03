@@ -6,6 +6,12 @@
       "pattern": "^PLUGIN_VERSION=\"[^\"]*\"",
       "replacement": "PLUGIN_VERSION=\"$VERSION\"",
       "verify": "^PLUGIN_VERSION=\"$VERSION\""
+    },
+    {
+      "path": "local/lib/python3/cmk_addons/plugins/oposs_ceph/agent_based/oposs_ceph.py",
+      "pattern": "^__version__ = \"[^\"]*\"",
+      "replacement": "__version__ = \"$VERSION\"",
+      "verify": "^__version__ = \"$VERSION\""
     }
   ],
   "release_assets": [

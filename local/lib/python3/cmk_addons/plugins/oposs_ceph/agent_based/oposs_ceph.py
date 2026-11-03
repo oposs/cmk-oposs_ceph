@@ -19,6 +19,10 @@ from cmk.agent_based.v2 import (
     render,
 )
 
+# Create release PR writes the released version here (version_files in
+# .github/repo-infra.json)
+__version__ = "unreleased"
+
 # ---------------------------------------------------------------------------
 # Parse functions
 # ---------------------------------------------------------------------------
