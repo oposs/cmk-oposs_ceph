@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### New
+- The package carries the release version in its check plugin (`__version__`).
+- The agent plugin from the MKP carries the release version in
+  `PLUGIN_VERSION`.
 
 ### Changed
 - Licence is now GNU General Public License v2, aligning this plugin
@@ -17,7 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 ## 0.1.1 - 2026-03-06
-## 0.1.0 - 2026-03-06
+### Fixed
+- The GitHub release carries the MKP file `oposs_ceph-0.1.1.mkp`; release
+  0.1.0 was tagged, but its package build failed and it was never published.
+
 ## 0.1.0 - 2026-03-06
 ### New
 - Initial release with 7 monitoring services:

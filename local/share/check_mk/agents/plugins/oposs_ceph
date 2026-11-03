@@ -2,6 +2,10 @@
 # Agent plugin for Ceph cluster monitoring
 # Collects status, OSD performance, and pool usage data
 
+# Create release PR writes the released version here (version_files in
+# .github/repo-infra.json)
+PLUGIN_VERSION="unreleased"
+
 CEPH=${CEPH_CMD:-ceph}
 
 echo "<<<oposs_ceph_status:sep(0)>>>"

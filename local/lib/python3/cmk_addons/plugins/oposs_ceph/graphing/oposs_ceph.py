@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Graphing definitions for Ceph monitoring.
 
 Only defines explicit Graph objects for aggregate metrics where combining
