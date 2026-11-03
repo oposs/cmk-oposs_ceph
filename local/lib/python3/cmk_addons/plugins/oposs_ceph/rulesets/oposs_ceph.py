@@ -1,18 +1,16 @@
-#!/usr/bin/env python3
 """Rulesets for Ceph monitoring: check parameter thresholds and bakery config."""
 
-from cmk.rulesets.v1 import Help, Label, Title
+from cmk.rulesets.v1 import Help, Title
 from cmk.rulesets.v1.form_specs import (
-    BooleanChoice,
     DefaultValue,
     DictElement,
     Dictionary,
     Float,
     Integer,
-    SimpleLevels,
     LevelDirection,
-    TimeSpan,
+    SimpleLevels,
     TimeMagnitude,
+    TimeSpan,
 )
 from cmk.rulesets.v1.rule_specs import (
     AgentConfig,
@@ -20,7 +18,6 @@ from cmk.rulesets.v1.rule_specs import (
     HostCondition,
     Topic,
 )
-
 
 # ---------------------------------------------------------------------------
 # Check parameter rulesets

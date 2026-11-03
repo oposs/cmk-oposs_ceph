@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Ceph cluster monitoring plugin for Checkmk.
 
 Parses three agent sections (status, osd_perf, df) and creates
@@ -7,13 +6,11 @@ pool usage, PG status, and cluster I/O.
 """
 
 import json
-from typing import Any, Dict, List, Mapping
+from typing import Any
 
 from cmk.agent_based.v2 import (
     AgentSection,
     CheckPlugin,
-    CheckResult,
-    DiscoveryResult,
     Metric,
     Result,
     Service,
@@ -22,12 +19,11 @@ from cmk.agent_based.v2 import (
     render,
 )
 
-
 # ---------------------------------------------------------------------------
 # Parse functions
 # ---------------------------------------------------------------------------
 
-def _parse_json_section(string_table: List[List[str]]) -> Dict[str, Any]:
+def _parse_json_section(string_table: list[list[str]]) -> dict[str, Any]:
     """Join all lines and parse as a single JSON object."""
     raw = "".join(" ".join(line) for line in string_table)
     if not raw.strip():
@@ -426,7 +422,6 @@ def check_oposs_ceph_pool_usage(params, section_oposs_ceph_status, section_oposs
         pstats = pool.get("stats", {})
         p_used = pstats.get("bytes_used", 0)
         p_stored = pstats.get("stored", 0)
-        p_avail = pstats.get("max_avail", 0)
         p_objects = pstats.get("objects", 0)
         p_pct = pstats.get("percent_used", 0) * 100.0
 

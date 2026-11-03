@@ -1,16 +1,16 @@
-#!/usr/bin/env python3
 """Bakery plugin for deploying the Ceph monitoring agent plugin."""
+
+from pathlib import Path
+from typing import Any
 
 from cmk.base.plugins.bakery.bakery_api.v1 import (
     OS,
     Plugin,
     register,
 )
-from pathlib import Path
-from typing import Any, Dict
 
 
-def get_oposs_ceph_files(conf: Dict[str, Any]):
+def get_oposs_ceph_files(conf: dict[str, Any]):
     """Deploy the oposs_ceph agent plugin."""
     if conf is None:
         return
