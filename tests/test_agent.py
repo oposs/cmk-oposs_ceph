@@ -6,6 +6,7 @@ send, then splits it into sections the way Checkmk does.
 """
 
 import importlib.util
+import json
 import os
 import pathlib
 import re
@@ -115,3 +116,25 @@ def test_agent_without_ceph_installed(tmp_path):
     result = _run(tmp_path / "no-such-ceph")
     assert result.stdout.count("<<<") == 3
     assert result.stdout.count("\n") == 3
+
+
+def test_agent_version_is_unreleased_in_the_repository():
+    assert re.search(r'^PLUGIN_VERSION="unreleased"$', AGENT.read_text(), flags=re.MULTILINE)
+
+
+def test_release_writes_version_into_agent(tmp_path):
+    """Apply the version_files entry of .github/repo-infra.json to a copy of
+    the agent, as Create release PR does (a multiline regex, first match)"""
+    config = json.loads((ROOT / ".github/repo-infra.json").read_text())
+    (spec,) = [f for f in config["version_files"] if pathlib.Path(f["path"]).name == AGENT.name]
+    assert ROOT / spec["path"] == AGENT
+    stamped = re.sub(spec["pattern"], spec["replacement"].replace("$VERSION", "9.8.7"),
+                     AGENT.read_text(), count=1, flags=re.MULTILINE)
+    assert re.search(spec["verify"].replace("$VERSION", re.escape("9.8.7")), stamped, flags=re.MULTILINE)
+    copy = tmp_path / "oposs_ceph"
+    copy.write_text(stamped)
+    # Read the variable the way bash does, without running the ceph commands
+    shown = subprocess.run(
+        ["bash", "-c", 'eval "$(grep -m1 "^PLUGIN_VERSION=" "$1")"; echo "$PLUGIN_VERSION"', "_", str(copy)],
+        check=True, capture_output=True, text=True)
+    assert shown.stdout == "9.8.7\n"

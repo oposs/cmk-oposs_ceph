@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### New
+- The agent plugin from the MKP carries the release version in
+  `PLUGIN_VERSION`.
 
 ### Changed
 - Licence is now GNU General Public License v2, aligning this plugin

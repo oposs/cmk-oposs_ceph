@@ -1,0 +1,14 @@
+{
+  "moving_major_tag": false,
+  "version_files": [
+    {
+      "path": "local/share/check_mk/agents/plugins/oposs_ceph",
+      "pattern": "^PLUGIN_VERSION=\"[^\"]*\"",
+      "replacement": "PLUGIN_VERSION=\"$VERSION\"",
+      "verify": "^PLUGIN_VERSION=\"$VERSION\""
+    }
+  ],
+  "release_assets": [
+    "oposs_ceph-*.mkp"
+  ]
+}
