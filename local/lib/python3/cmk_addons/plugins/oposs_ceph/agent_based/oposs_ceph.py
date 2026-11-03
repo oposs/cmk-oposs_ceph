@@ -226,8 +226,9 @@ def check_oposs_ceph_osd_latency(params, section_oposs_ceph_status, section_opos
         yield Result(state=State.UNKNOWN, summary="No OSD perf data")
         return
 
-    worst_commit = 0.0
-    worst_apply = 0.0
+    # Below any real latency, so the first OSD always sets the worst one
+    worst_commit = -1.0
+    worst_apply = -1.0
     worst_osd_commit = -1
     worst_osd_apply = -1
 

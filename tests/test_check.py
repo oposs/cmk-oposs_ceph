@@ -315,13 +315,15 @@ def test_latency_levels_off(check, ok):
     assert _worst(_run(check, "osd_latency", (None, perf, None), params)) is State.OK
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: an idle cluster where every OSD reports 0 ms shows 'OSD -1'")
 def test_latency_all_zero_names_a_real_osd(check, ok):
     perf = copy.deepcopy(ok[1])
     for osd in perf["osdstats"]["osd_perf_infos"]:
         osd["perf_stats"].update(commit_latency_ms=0, apply_latency_ms=0)
-    summaries = [r.summary for r in _results(_run(check, "osd_latency", (None, perf, None))) if r.summary]
-    assert not any("OSD -1" in s for s in summaries), summaries
+    out = _run(check, "osd_latency", (None, perf, None))
+    summaries = [r.summary for r in _results(out) if r.summary]
+    # Ceph lists the OSDs from the highest id down; the first one is named
+    assert summaries == ["Worst commit latency (OSD 11): 0.0 ms", "Worst apply latency (OSD 11): 0.0 ms"]
+    assert _metrics(out)["oposs_ceph_osd_worst_commit_latency"] == 0.0
 
 
 # --------------------------------------------------------------------------

@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   previously held the MIT text.
 
 ### Fixed
+- "Ceph OSD Latency" showed "Worst commit latency (OSD -1)" and "Worst
+  apply latency (OSD -1)" on an idle cluster where every OSD reports 0 ms. It
+  now names a real OSD.
 
 ## 0.1.1 - 2026-03-06
 ### Fixed
