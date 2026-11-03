@@ -25,9 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   inconsistent PG (state `active+clean+inconsistent`). Such PGs, and those
   under repair or with a failed repair or snaptrim error, now count as
   problematic and make the service WARN.
-- The agent plugin could hang when no Ceph monitor answered, and the
-  Ceph services then got no fresh data. Each `ceph` call now stops after 30
-  seconds, and the services show "No data from agent" instead.
 
 ## 0.1.1 - 2026-03-06
 ### Fixed

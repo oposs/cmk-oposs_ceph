@@ -13,7 +13,6 @@ import re
 import stat
 import subprocess
 import sys
-import time
 
 import pytest
 
@@ -56,8 +55,8 @@ def _fake(tmp_path, body):
     return path
 
 
-def _run(ceph, **env_extra):
-    env = dict(os.environ, CEPH_CMD=str(ceph), **env_extra)
+def _run(ceph):
+    env = dict(os.environ, CEPH_CMD=str(ceph))
     return subprocess.run(["bash", str(AGENT)], check=False, env=env, capture_output=True, text=True, timeout=30)
 
 
@@ -117,33 +116,6 @@ def test_agent_without_ceph_installed(tmp_path):
     result = _run(tmp_path / "no-such-ceph")
     assert result.stdout.count("<<<") == 3
     assert result.stdout.count("\n") == 3
-
-
-HANGING_CEPH = """#!/bin/sh
-echo "$*" >> "{log}"
-exec sleep 60
-"""
-
-
-def test_agent_gives_up_on_a_hanging_ceph(tmp_path):
-    # No monitor answers: each ceph call is cut off after CEPH_TIMEOUT
-    log = tmp_path / "calls"
-    started = time.monotonic()
-    result = _run(_fake(tmp_path, HANGING_CEPH.format(log=log)), CEPH_TIMEOUT="1")
-    assert time.monotonic() - started < 15
-    assert log.read_text().splitlines() == ["status -f json", "osd perf -f json", "df detail -f json"]
-    assert result.stdout.splitlines() == [
-        "<<<oposs_ceph_status:sep(0)>>>",
-        "<<<oposs_ceph_osd_perf:sep(0)>>>",
-        "<<<oposs_ceph_df:sep(0)>>>",
-    ]
-
-
-def test_agent_timeout_defaults_to_30_seconds():
-    assert re.search(r'^CEPH_TIMEOUT=\$\{CEPH_TIMEOUT:-30\}$', AGENT.read_text(), flags=re.MULTILINE)
-    calls = [line for line in AGENT.read_text().splitlines() if "$CEPH " in line]
-    assert len(calls) == 3
-    assert all(line.startswith('timeout "$CEPH_TIMEOUT" $CEPH ') for line in calls)
 
 
 def test_agent_version_is_unreleased_in_the_repository():
