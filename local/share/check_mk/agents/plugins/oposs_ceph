@@ -7,12 +7,14 @@
 PLUGIN_VERSION="unreleased"
 
 CEPH=${CEPH_CMD:-ceph}
+# Seconds each ceph call may take; it hangs when no monitor answers
+CEPH_TIMEOUT=${CEPH_TIMEOUT:-30}
 
 echo "<<<oposs_ceph_status:sep(0)>>>"
-$CEPH status -f json 2>/dev/null
+timeout "$CEPH_TIMEOUT" $CEPH status -f json 2>/dev/null
 
 echo "<<<oposs_ceph_osd_perf:sep(0)>>>"
-$CEPH osd perf -f json 2>/dev/null
+timeout "$CEPH_TIMEOUT" $CEPH osd perf -f json 2>/dev/null
 
 echo "<<<oposs_ceph_df:sep(0)>>>"
-$CEPH df detail -f json 2>/dev/null
+timeout "$CEPH_TIMEOUT" $CEPH df detail -f json 2>/dev/null
