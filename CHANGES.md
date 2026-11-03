@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - "Ceph OSD Latency" showed "Worst commit latency (OSD -1)" and "Worst
   apply latency (OSD -1)" on an idle cluster where every OSD reports 0 ms. It
   now names a real OSD.
+- "Ceph PG Status" stayed OK with "N/N PGs clean" while scrub had found an
+  inconsistent PG (state `active+clean+inconsistent`). Such PGs, and those
+  under repair or with a failed repair or snaptrim error, now count as
+  problematic and make the service WARN.
 
 ## 0.1.1 - 2026-03-06
 ### Fixed

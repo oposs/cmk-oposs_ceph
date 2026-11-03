@@ -470,6 +470,10 @@ def discover_oposs_ceph_pg_status(section_oposs_ceph_status, section_oposs_ceph_
         yield Service()
 
 
+# PG state flags that mean scrub found damage, even on an active+clean PG
+_PG_DAMAGE_FLAGS = {"inconsistent", "repair", "failed_repair", "snaptrim_error"}
+
+
 def check_oposs_ceph_pg_status(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
     section = section_oposs_ceph_status
     if not section:
@@ -486,8 +490,9 @@ def check_oposs_ceph_pg_status(section_oposs_ceph_status, section_oposs_ceph_osd
     for entry in pgs_by_state:
         state_name = entry.get("state_name", "")
         count = entry.get("count", 0)
-        # Count PGs that have "active+clean" as their base state (may include scrubbing)
-        if state_name.startswith("active+clean"):
+        # Count PGs that have "active+clean" as their base state (may include
+        # scrubbing), unless a flag says scrub found damage
+        if state_name.startswith("active+clean") and not _PG_DAMAGE_FLAGS & set(state_name.split("+")):
             clean_count += count
         else:
             problematic.append((state_name, count))

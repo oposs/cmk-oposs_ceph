@@ -429,14 +429,43 @@ def test_pg_status_degraded_is_warn(check, warn):
     assert _metrics(out)["oposs_ceph_pg_state_active_undersized_degraded"] == 37
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: an active+clean+inconsistent PG counts as clean, PG Status stays OK")
 def test_pg_status_inconsistent_is_not_clean(check, ok):
     status = copy.deepcopy(ok[0])
     status["pgmap"]["pgs_by_state"] = [
         {"state_name": "active+clean", "count": 544},
         {"state_name": "active+clean+inconsistent", "count": 1},
     ]
-    assert _worst(_run(check, "pg_status", (status, None, None))) is not State.OK
+    out = _run(check, "pg_status", (status, None, None))
+    assert _results(out)[0] == Result(
+        state=State.WARN, summary="544/545 PGs clean, problematic: 1 active+clean+inconsistent")
+    assert _metrics(out)["oposs_ceph_pg_state_active_clean_inconsistent"] == 1
+
+
+@pytest.mark.parametrize("state_name", [
+    "active+clean+scrubbing+deep+inconsistent+repair",
+    "active+clean+inconsistent+failed_repair",
+    "active+clean+snaptrim_error",
+])
+def test_pg_status_other_damage_flags_are_not_clean(check, ok, state_name):
+    status = copy.deepcopy(ok[0])
+    status["pgmap"]["pgs_by_state"] = [
+        {"state_name": "active+clean", "count": 544},
+        {"state_name": state_name, "count": 1},
+    ]
+    assert _worst(_run(check, "pg_status", (status, None, None))) is State.WARN
+
+
+@pytest.mark.parametrize("state_name", [
+    "active+clean+snaptrim", "active+clean+snaptrim_wait", "active+clean+scrubbing+deep",
+])
+def test_pg_status_maintenance_flags_stay_clean(check, ok, state_name):
+    status = copy.deepcopy(ok[0])
+    status["pgmap"]["pgs_by_state"] = [
+        {"state_name": "active+clean", "count": 544},
+        {"state_name": state_name, "count": 1},
+    ]
+    assert _results(_run(check, "pg_status", (status, None, None)))[0] == Result(
+        state=State.OK, summary="545/545 PGs clean")
 
 
 # --------------------------------------------------------------------------
