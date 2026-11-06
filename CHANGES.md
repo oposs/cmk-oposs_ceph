@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### New
+
+### Changed
+
+### Fixed
+
+## 0.2.0 - 2026-11-06
+### New
 - The package carries the release version in its check plugin (`__version__`).
 - The agent plugin from the MKP carries the release version in
   `PLUGIN_VERSION`.
