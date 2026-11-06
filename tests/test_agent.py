@@ -118,8 +118,26 @@ def test_agent_without_ceph_installed(tmp_path):
     assert result.stdout.count("\n") == 3
 
 
-def test_agent_version_is_unreleased_in_the_repository():
-    assert re.search(r'^PLUGIN_VERSION="unreleased"$', AGENT.read_text(), flags=re.MULTILINE)
+def test_agent_carries_the_released_version():
+    # The publish check fails on main when a version file disagrees with
+    # the newest released CHANGES.md heading.
+    assert re.search(rf'^PLUGIN_VERSION="{re.escape(_released_version())}"$',
+                     AGENT.read_text(), flags=re.MULTILINE)
+
+
+def test_agent_is_executable_in_git():
+    # The Checkmk agent skips plugins without the executable bit; the MKP
+    # build takes the mode from git.
+    out = subprocess.run(["git", "ls-files", "-s", AGENT.name], cwd=AGENT.parent,
+                         capture_output=True, text=True, check=True).stdout
+    assert out.split()[0] == "100755"
+
+
+def _released_version():
+    """The newest released heading of CHANGES.md, the version the publish
+    check expects in every version_files target between releases."""
+    return re.search(r"^## (\d+\.\d+\.\d+)", (ROOT / "CHANGES.md").read_text(),
+                     flags=re.MULTILINE).group(1)
 
 
 def test_release_writes_version_into_agent(tmp_path):

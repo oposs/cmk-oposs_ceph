@@ -4,7 +4,7 @@
 
 # Create release PR writes the released version here (version_files in
 # .github/repo-infra.json)
-PLUGIN_VERSION="unreleased"
+PLUGIN_VERSION="0.1.1"
 
 CEPH=${CEPH_CMD:-ceph}
 

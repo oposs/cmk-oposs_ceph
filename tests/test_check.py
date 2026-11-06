@@ -527,8 +527,12 @@ def test_pick_node_tolerates_missing_side_sections(check, ok):
     assert check._pick_node_sections({"n1": ok[0]}, None, None) == (ok[0], {}, {})
 
 
-def test_check_version_is_unreleased_in_the_repository():
-    assert re.search(r'^__version__ = "unreleased"$', CHECK.read_text(), flags=re.MULTILINE)
+def test_check_carries_the_released_version():
+    # The publish check fails on main when a version file disagrees with
+    # the newest released CHANGES.md heading.
+    released = re.search(r"^## (\d+\.\d+\.\d+)", (ROOT / "CHANGES.md").read_text(),
+                         flags=re.MULTILINE).group(1)
+    assert re.search(rf'^__version__ = "{re.escape(released)}"$', CHECK.read_text(), flags=re.MULTILINE)
 
 
 def test_release_writes_version_into_check(tmp_path):
