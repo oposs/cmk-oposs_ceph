@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- "Ceph OSD Status" on a Ceph 14 (Nautilus) cluster always showed "0/0 OSDs
+  up and in" and stayed OK, even with OSDs down. It now reads the OSD counts
+  of Nautilus too, so down OSDs make the service CRIT and out OSDs WARN.
 - "Ceph Health" showed only the one-line summary of each health check, and
   "Ceph Scrub" never listed which PGs are overdue. The agent plugin now also
   sends `ceph health detail`, so the long output names, for example, the OSD

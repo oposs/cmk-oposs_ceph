@@ -200,6 +200,8 @@ def check_oposs_ceph_osd_status(section_oposs_ceph_status, section_oposs_ceph_os
         return
 
     osdmap = section.get("osdmap", {})
+    # Ceph 14 (Nautilus) nests the counters in a second "osdmap" object
+    osdmap = osdmap.get("osdmap", osdmap)
     num_osds = osdmap.get("num_osds", 0)
     num_up = osdmap.get("num_up_osds", 0)
     num_in = osdmap.get("num_in_osds", 0)

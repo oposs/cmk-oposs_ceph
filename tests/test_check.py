@@ -281,6 +281,15 @@ def test_osd_down_is_crit(check, warn):
     assert _metrics(out)["oposs_ceph_osd_up"] == 11
 
 
+def test_osd_status_nautilus(check):
+    # Ceph 14 (Nautilus) nests the counters in a second "osdmap" object
+    status = check._parse_json_section(_table(_raw("status_nautilus.json")))
+    assert "num_osds" not in status["osdmap"]
+    out = _run(check, "osd_status", (status, None, None))
+    assert _results(out) == [Result(state=State.CRIT, summary="1/12 OSDs down")]
+    assert _metrics(out) == {"oposs_ceph_osd_total": 12, "oposs_ceph_osd_up": 11, "oposs_ceph_osd_in": 12}
+
+
 def test_osd_out_is_warn(check, ok):
     status = copy.deepcopy(ok[0])
     status["osdmap"]["num_in_osds"] = 10
