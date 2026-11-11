@@ -60,7 +60,8 @@ local/share/check_mk/agents/plugins/
 ### Bakery Deployment
 
 Enable the "Ceph Monitoring (Linux)" agent bakery rule to automatically deploy
-the agent plugin to hosts. The collection interval is configurable (default 60s).
+the agent plugin to hosts. The collection interval is configurable (default
+60s); 0 runs the plugin on every agent run.
 
 ## Cluster Setup
 
@@ -81,11 +82,12 @@ mon goes down, monitoring continues from the remaining nodes.
 
 ## Agent Data
 
-The agent plugin runs three commands:
+The agent plugin runs four commands, each limited to 30 seconds:
 
 - `ceph status -f json` — health, OSD map, PG states, I/O stats
 - `ceph osd perf -f json` — per-OSD commit/apply latency
 - `ceph df detail -f json` — cluster and per-pool capacity
+- `ceph health detail -f json` — the detail lines of each health check
 
 ## Troubleshooting
 

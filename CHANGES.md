@@ -12,21 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
-- A "Collection interval" of 0 in the "Ceph Monitoring (Linux)" rule, which
-  the rule help explains as "every agent run", was baked as a 0-second cache
-  interval, and the Checkmk agent never runs a plugin deployed that way, so
-  the Ceph services got no data. The plugin now runs on every agent run.
-- "Ceph OSD Status" on a Ceph 14 (Nautilus) cluster always showed "0/0 OSDs
-  up and in" and stayed OK, even with OSDs down. It now reads the OSD counts
-  of Nautilus too, so down OSDs make the service CRIT and out OSDs WARN.
+- A Ceph monitor or mgr that stopped answering kept the agent plugin waiting
+  forever, so the host sent no Ceph data at all. Each ceph command now gets
+  30 seconds; a command that runs out of time leaves only the services
+  that read its data UNKNOWN with "No data from agent".
 - "Ceph Health" showed only the one-line summary of each health check, and
   "Ceph Scrub" never listed which PGs are overdue. The agent plugin now also
   sends `ceph health detail`, so the long output names, for example, the OSD
   that is down or each PG not scrubbed in time.
-- A Ceph monitor or mgr that stopped answering kept the agent plugin waiting
-  forever, so the host sent no Ceph data at all. Each ceph command now gets
-  30 seconds; a command that runs out of time leaves only its own service
-  UNKNOWN with "No data from agent".
+- "Ceph OSD Status" on a Ceph 14 (Nautilus) cluster always showed "0/0 OSDs
+  up and in" and stayed OK, even with OSDs down. It now reads the OSD counts
+  of Nautilus too, so down OSDs make the service CRIT and out OSDs WARN.
+- A "Collection interval" of 0 in the "Ceph Monitoring (Linux)" rule, which
+  the rule help explains as "every agent run", was baked as a 0-second cache
+  interval, and the Checkmk agent never runs a plugin deployed that way, so
+  the Ceph services got no data. The plugin now runs on every agent run.
 
 ## 0.2.0 - 2026-11-06
 ### New
