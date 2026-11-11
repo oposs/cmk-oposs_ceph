@@ -1,6 +1,6 @@
 #!/bin/bash
 # Agent plugin for Ceph cluster monitoring
-# Collects status, OSD performance, and pool usage data
+# Collects status, OSD performance, pool usage and health detail data
 
 # Create release PR writes the released version here (version_files in
 # .github/repo-infra.json)
@@ -24,3 +24,8 @@ $CEPH osd perf -f json 2>/dev/null
 
 echo "<<<oposs_ceph_df:sep(0)>>>"
 $CEPH df detail -f json 2>/dev/null
+
+# `ceph status` carries only a summary per health check; the detail lines
+# (which OSD is down, which PG is overdue) come from here
+echo "<<<oposs_ceph_health_detail:sep(0)>>>"
+$CEPH health detail -f json 2>/dev/null

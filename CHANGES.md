@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- "Ceph Health" showed only the one-line summary of each health check, and
+  "Ceph Scrub" never listed which PGs are overdue. The agent plugin now also
+  sends `ceph health detail`, so the long output names, for example, the OSD
+  that is down or each PG not scrubbed in time.
 - A Ceph monitor or mgr that stopped answering kept the agent plugin waiting
   forever, so the host sent no Ceph data at all. Each ceph command now gets
   30 seconds; a command that runs out of time leaves only its own service

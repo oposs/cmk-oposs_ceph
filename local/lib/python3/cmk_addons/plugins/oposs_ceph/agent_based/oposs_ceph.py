@@ -1,6 +1,6 @@
 """Ceph cluster monitoring plugin for Checkmk.
 
-Parses three agent sections (status, osd_perf, df) and creates
+Parses four agent sections (status, osd_perf, df, health_detail) and creates
 seven services covering health, OSD status, OSD latency, scrub,
 pool usage, PG status, and cluster I/O.
 """
@@ -53,6 +53,13 @@ agent_section_oposs_ceph_df = AgentSection(
     parse_function=_parse_json_section,
 )
 
+# `ceph health detail -f json`: the health checks again, each with its
+# detail lines, which `ceph status` leaves out
+agent_section_oposs_ceph_health_detail = AgentSection(
+    name="oposs_ceph_health_detail",
+    parse_function=_parse_json_section,
+)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -96,16 +103,38 @@ def _pick_node_sections(
     return {}, {}, {}
 
 
+def _pick_node_detail(section_map_status, section_map_health_detail):
+    """The health detail of the node _pick_node_sections reads."""
+    for node in section_map_status:
+        if section_map_status.get(node):
+            return (section_map_health_detail or {}).get(node) or {}
+    return {}
+
+
+def _check_details(name, info, health_detail):
+    """The detail lines of one health check.
+
+    They come from the health detail section; `ceph status` has none, but
+    take them from there too should it ever carry them.
+    """
+    details = info.get("detail")
+    if details is None:
+        details = (health_detail or {}).get("checks", {}).get(name, {}).get("detail", [])
+    return details
+
+
 # ---------------------------------------------------------------------------
 # 1. Ceph Health
 # ---------------------------------------------------------------------------
 
-def discover_oposs_ceph_health(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+def discover_oposs_ceph_health(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df,
+                               section_oposs_ceph_health_detail=None):
     if section_oposs_ceph_status:
         yield Service()
 
 
-def check_oposs_ceph_health(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+def check_oposs_ceph_health(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df,
+                            section_oposs_ceph_health_detail=None):
     section = section_oposs_ceph_status
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data from agent")
@@ -127,25 +156,28 @@ def check_oposs_ceph_health(section_oposs_ceph_status, section_oposs_ceph_osd_pe
 
     yield Result(state=state, summary=f"{status}: {'; '.join(summary_parts)}")
 
-    # Details per health check
+    # Details per health check. A muted check does not count for the
+    # cluster status, so its details must not raise the service state either.
     for name, info in checks.items():
-        sev = info.get("severity", "HEALTH_OK")
-        for detail in info.get("detail", []):
+        sev = "HEALTH_OK" if info.get("muted") else info.get("severity", "HEALTH_OK")
+        for detail in _check_details(name, info, section_oposs_ceph_health_detail):
             yield Result(
                 state=_state_from_ceph(sev),
                 notice=detail.get("message", ""),
             )
 
 
-def cluster_check_oposs_ceph_health(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+def cluster_check_oposs_ceph_health(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df,
+                                    section_oposs_ceph_health_detail=None):
     s, p, d = _pick_node_sections(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df)
-    yield from check_oposs_ceph_health(s, p, d)
+    h = _pick_node_detail(section_oposs_ceph_status, section_oposs_ceph_health_detail)
+    yield from check_oposs_ceph_health(s, p, d, h)
 
 
 check_plugin_oposs_ceph_health = CheckPlugin(
     name="oposs_ceph_health",
     service_name="Ceph Health",
-    sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"],
+    sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df", "oposs_ceph_health_detail"],
     discovery_function=discover_oposs_ceph_health,
     check_function=check_oposs_ceph_health,
     cluster_check_function=cluster_check_oposs_ceph_health,
@@ -300,12 +332,14 @@ check_plugin_oposs_ceph_osd_latency = CheckPlugin(
 # 4. Ceph Scrub
 # ---------------------------------------------------------------------------
 
-def discover_oposs_ceph_scrub(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+def discover_oposs_ceph_scrub(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df,
+                              section_oposs_ceph_health_detail=None):
     if section_oposs_ceph_status:
         yield Service()
 
 
-def check_oposs_ceph_scrub(params, section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+def check_oposs_ceph_scrub(params, section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df,
+                           section_oposs_ceph_health_detail=None):
     section = section_oposs_ceph_status
     if not section:
         yield Result(state=State.UNKNOWN, summary="No data from agent")
@@ -355,21 +389,22 @@ def check_oposs_ceph_scrub(params, section_oposs_ceph_status, section_oposs_ceph
     )
 
     # Detail lines for overdue PGs
-    for detail in not_scrubbed.get("detail", []):
-        yield Result(state=State.OK, notice=detail.get("message", ""))
-    for detail in not_deep.get("detail", []):
-        yield Result(state=State.OK, notice=detail.get("message", ""))
+    for name, info in (("PG_NOT_SCRUBBED", not_scrubbed), ("PG_NOT_DEEP_SCRUBBED", not_deep)):
+        for detail in _check_details(name, info, section_oposs_ceph_health_detail):
+            yield Result(state=State.OK, notice=detail.get("message", ""))
 
 
-def cluster_check_oposs_ceph_scrub(params, section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df):
+def cluster_check_oposs_ceph_scrub(params, section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df,
+                                   section_oposs_ceph_health_detail=None):
     s, p, d = _pick_node_sections(section_oposs_ceph_status, section_oposs_ceph_osd_perf, section_oposs_ceph_df)
-    yield from check_oposs_ceph_scrub(params, s, p, d)
+    h = _pick_node_detail(section_oposs_ceph_status, section_oposs_ceph_health_detail)
+    yield from check_oposs_ceph_scrub(params, s, p, d, h)
 
 
 check_plugin_oposs_ceph_scrub = CheckPlugin(
     name="oposs_ceph_scrub",
     service_name="Ceph Scrub",
-    sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"],
+    sections=["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df", "oposs_ceph_health_detail"],
     discovery_function=discover_oposs_ceph_scrub,
     check_function=check_oposs_ceph_scrub,
     cluster_check_function=cluster_check_oposs_ceph_scrub,

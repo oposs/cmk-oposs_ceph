@@ -28,6 +28,7 @@ case "$*" in
   "status -f json") cat "{data}/status_ok.json" ;;
   "osd perf -f json") cat "{data}/osd_perf.json" ;;
   "df detail -f json") cat "{data}/df_detail.json" ;;
+  "health detail -f json") cat "{data}/health_detail_ok.json" ;;
   *) echo "unexpected: $*" >&2; exit 22 ;;
 esac
 """
@@ -91,23 +92,27 @@ def test_agent_syntax():
     subprocess.run(["bash", "-n", str(AGENT)], check=True)
 
 
-def test_agent_runs_the_three_ceph_commands(tmp_path):
+def test_agent_runs_the_four_ceph_commands(tmp_path):
     log = tmp_path / "calls"
     result = _run(_fake(tmp_path, FAKE_CEPH.format(log=log, data=DATA)))
     assert result.returncode == 0
-    assert log.read_text().splitlines() == ["status -f json", "osd perf -f json", "df detail -f json"]
+    assert log.read_text().splitlines() == [
+        "status -f json", "osd perf -f json", "df detail -f json", "health detail -f json"]
 
 
 def test_agent_output_parses_into_all_sections(tmp_path, check):
     result = _run(_fake(tmp_path, FAKE_CEPH.format(log=tmp_path / "calls", data=DATA)))
     sections = _sections(result.stdout)
-    assert list(sections) == ["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"]
+    assert list(sections) == ["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df",
+                              "oposs_ceph_health_detail"]
     status = check._parse_json_section(sections["oposs_ceph_status"])
     perf = check._parse_json_section(sections["oposs_ceph_osd_perf"])
     df = check._parse_json_section(sections["oposs_ceph_df"])
     assert status["health"]["status"] == "HEALTH_OK"
     assert len(perf["osdstats"]["osd_perf_infos"]) == 12
     assert [p["name"] for p in df["pools"]] == [".mgr", "rbd", "cephfs.data"]
+    detail = check._parse_json_section(sections["oposs_ceph_health_detail"])
+    assert detail == {"status": "HEALTH_OK", "checks": {}, "mutes": []}
 
 
 def test_agent_with_failing_ceph_sends_empty_sections(tmp_path, check):
@@ -117,6 +122,7 @@ def test_agent_with_failing_ceph_sends_empty_sections(tmp_path, check):
         "<<<oposs_ceph_status:sep(0)>>>",
         "<<<oposs_ceph_osd_perf:sep(0)>>>",
         "<<<oposs_ceph_df:sep(0)>>>",
+        "<<<oposs_ceph_health_detail:sep(0)>>>",
     ]
     for table in _sections(result.stdout).values():
         assert check._parse_json_section(table) == {}
@@ -128,7 +134,8 @@ def test_agent_gives_up_on_a_hanging_ceph_command(tmp_path, check):
     result = _run(_fake(tmp_path, HANGING_CEPH.format(data=DATA)), CEPH_TIMEOUT="1")
     assert time.monotonic() - started < 15
     sections = _sections(result.stdout)
-    assert list(sections) == ["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"]
+    assert list(sections) == ["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df",
+                              "oposs_ceph_health_detail"]
     assert check._parse_json_section(sections["oposs_ceph_osd_perf"]) == {}
     assert check._parse_json_section(sections["oposs_ceph_status"])["health"]["status"] == "HEALTH_OK"
     assert check._parse_json_section(sections["oposs_ceph_df"])["pools"]
@@ -136,8 +143,8 @@ def test_agent_gives_up_on_a_hanging_ceph_command(tmp_path, check):
 
 def test_agent_without_ceph_installed(tmp_path):
     result = _run(tmp_path / "no-such-ceph")
-    assert result.stdout.count("<<<") == 3
-    assert result.stdout.count("\n") == 3
+    assert result.stdout.count("<<<") == 4
+    assert result.stdout.count("\n") == 4
 
 
 def test_agent_carries_the_released_version():

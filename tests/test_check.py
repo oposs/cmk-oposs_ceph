@@ -224,6 +224,41 @@ def test_health_detail_lines_get_their_own_severity(check, ok):
     assert out[1] == Result(state=State.WARN, notice="osd.5 (root=default,host=ceph-osd2) is down")
 
 
+@pytest.fixture
+def detail_warn(check):
+    """`ceph health detail -f json` taken together with status_warn.json"""
+    return check._parse_json_section(_table(_raw("health_detail_warn.json")))
+
+
+def test_health_shows_the_detail_ceph_status_leaves_out(check, warn, detail_warn):
+    # `ceph status` carries only the summary of each check
+    assert all("detail" not in c for c in warn[0]["health"]["checks"].values())
+    out = list(check.check_oposs_ceph_health(*warn, detail_warn))
+    assert out[0] == _run(check, "health", warn)[0]
+    assert Result(state=State.WARN, notice="osd.7 (root=default,host=ceph-osd3) is down") in out
+    assert Result(state=State.WARN, notice="12 more pgs... ") in out
+    assert len(out) == 1 + 1 + 37 + 14 + 51
+    assert _worst(out) is State.WARN
+
+
+def test_health_detail_of_a_muted_check_stays_ok(check, ok):
+    # A muted check is listed but does not count for the cluster status
+    status = copy.deepcopy(ok[0])
+    status["health"] = {"status": "HEALTH_OK", "checks": {"OSD_SCRUB_ERRORS": {
+        "severity": "HEALTH_ERR", "summary": {"message": "2 scrub errors", "count": 2}, "muted": True}},
+        "mutes": [{"code": "OSD_SCRUB_ERRORS", "sticky": False, "summary": "2 scrub errors", "count": 2}]}
+    detail = copy.deepcopy(status["health"])
+    detail["checks"]["OSD_SCRUB_ERRORS"]["detail"] = [{"message": "2 scrub errors"}]
+    out = list(check.check_oposs_ceph_health(status, None, None, detail))
+    assert out == [Result(state=State.OK, summary="HEALTH_OK: 2 scrub errors"),
+                   Result(state=State.OK, notice="2 scrub errors")]
+
+
+def test_health_without_detail_section_from_an_old_agent(check, warn):
+    (result,) = check.check_oposs_ceph_health(*warn, None)
+    assert result.state is State.WARN
+
+
 def test_health_unknown_status_string(check):
     assert _run(check, "health", ({"health": {}}, None, None)) == [
         Result(state=State.OK, summary="HEALTH_UNKNOWN")]
@@ -350,6 +385,16 @@ def test_scrub_backlog_from_health_checks(check, warn):
     # 14 not scrubbed is between 10 and 50, 62 not deep-scrubbed is above 50
     assert by_label == {"PGs not scrubbed in time": State.WARN, "PGs not deep-scrubbed in time": State.CRIT}
     assert _metrics(out)["oposs_ceph_pgs_not_deep_scrubbed"] == 62
+
+
+def test_scrub_lists_the_overdue_pgs(check, warn, detail_warn):
+    out = list(check.check_oposs_ceph_scrub(_defaults(check, "scrub"), *warn, detail_warn))
+    notices = [r.details for r in _results(out) if r.state is State.OK and r.details.startswith("pg ")]
+    assert len([n for n in notices if " not scrubbed since " in n]) == 14
+    assert len([n for n in notices if " not deep-scrubbed since " in n]) == 50
+    assert Result(state=State.OK, notice="12 more pgs... ") in out
+    # the overdue PGs are information, the counts decide the state
+    assert _worst(out) is _worst(_run(check, "scrub", warn))
 
 
 @pytest.mark.parametrize("count, state", [(9, State.OK), (10, State.WARN), (49, State.WARN), (50, State.CRIT)])
@@ -515,6 +560,21 @@ def test_cluster_uses_the_node_with_data(check, ok, service):
     else:
         clustered = list(plugin.cluster_check_function(plugin.check_default_parameters, *nodes))
     assert clustered == _run(check, service, ok)
+
+
+@pytest.mark.parametrize("service", ["health", "scrub"])
+def test_cluster_takes_the_detail_from_the_node_it_reads(check, warn, detail_warn, service):
+    status, perf, df = warn
+    nodes = (
+        {"ceph-mon1": None, "ceph-mon2": status},
+        {"ceph-mon1": None, "ceph-mon2": perf},
+        {"ceph-mon1": None, "ceph-mon2": df},
+        {"ceph-mon1": {"status": "HEALTH_OK", "checks": {}}, "ceph-mon2": detail_warn},
+    )
+    plugin = getattr(check, f"check_plugin_oposs_ceph_{service}")
+    fn = getattr(check, f"check_oposs_ceph_{service}")
+    params = () if plugin.check_default_parameters is None else (plugin.check_default_parameters,)
+    assert list(plugin.cluster_check_function(*params, *nodes)) == list(fn(*params, *warn, detail_warn))
 
 
 def test_cluster_without_any_data_is_unknown(check):
