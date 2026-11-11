@@ -1,12 +1,20 @@
 #!/bin/bash
 # Agent plugin for Ceph cluster monitoring
-# Collects status, OSD performance, and pool usage data
+# Collects status, OSD performance, pool usage and health detail data
 
 # Create release PR writes the released version here (version_files in
 # .github/repo-infra.json)
 PLUGIN_VERSION="0.2.0"
 
 CEPH=${CEPH_CMD:-ceph}
+
+# A hung monitor or mgr makes a ceph command wait forever, and the agent
+# with it. Give each command this many seconds, where timeout(1) exists and
+# understands the GNU syntax (old busybox wants -t).
+CEPH_TIMEOUT=${CEPH_TIMEOUT:-30}
+if timeout -k 5 1 true >/dev/null 2>&1; then
+    CEPH="timeout -k 5 $CEPH_TIMEOUT $CEPH"
+fi
 
 echo "<<<oposs_ceph_status:sep(0)>>>"
 $CEPH status -f json 2>/dev/null
@@ -16,3 +24,8 @@ $CEPH osd perf -f json 2>/dev/null
 
 echo "<<<oposs_ceph_df:sep(0)>>>"
 $CEPH df detail -f json 2>/dev/null
+
+# `ceph status` carries only a summary per health check; the detail lines
+# (which OSD is down, which PG is overdue) come from here
+echo "<<<oposs_ceph_health_detail:sep(0)>>>"
+$CEPH health detail -f json 2>/dev/null

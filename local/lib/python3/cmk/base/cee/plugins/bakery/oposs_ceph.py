@@ -17,11 +17,14 @@ def get_oposs_ceph_files(conf: dict[str, Any]):
 
     interval = int(conf.get("interval", 60))
 
+    # 0 means every agent run (see the rule help). An interval puts the
+    # plugin into plugins/<interval>/, and the agent runs only
+    # plugins/[1-9]*/, so 0 must mean no interval at all.
     yield Plugin(
         base_os=OS.LINUX,
         source=Path("oposs_ceph"),
         target=Path("oposs_ceph"),
-        interval=interval,
+        interval=interval if interval > 0 else None,
     )
 
 
