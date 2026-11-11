@@ -8,6 +8,14 @@ PLUGIN_VERSION="0.2.0"
 
 CEPH=${CEPH_CMD:-ceph}
 
+# A hung monitor or mgr makes a ceph command wait forever, and the agent
+# with it. Give each command this many seconds, where timeout(1) exists and
+# understands the GNU syntax (old busybox wants -t).
+CEPH_TIMEOUT=${CEPH_TIMEOUT:-30}
+if timeout -k 5 1 true >/dev/null 2>&1; then
+    CEPH="timeout -k 5 $CEPH_TIMEOUT $CEPH"
+fi
+
 echo "<<<oposs_ceph_status:sep(0)>>>"
 $CEPH status -f json 2>/dev/null
 

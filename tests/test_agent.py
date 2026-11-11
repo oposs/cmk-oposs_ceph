@@ -13,6 +13,7 @@ import re
 import stat
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -55,8 +56,17 @@ def _fake(tmp_path, body):
     return path
 
 
-def _run(ceph):
-    env = dict(os.environ, CEPH_CMD=str(ceph))
+HANGING_CEPH = """#!/bin/sh
+case "$*" in
+  "osd perf -f json") exec sleep 600 ;;  # a mgr that never answers
+  "status -f json") cat "{data}/status_ok.json" ;;
+  "df detail -f json") cat "{data}/df_detail.json" ;;
+esac
+"""
+
+
+def _run(ceph, **env_extra):
+    env = dict(os.environ, CEPH_CMD=str(ceph), **env_extra)
     return subprocess.run(["bash", str(AGENT)], check=False, env=env, capture_output=True, text=True, timeout=30)
 
 
@@ -110,6 +120,18 @@ def test_agent_with_failing_ceph_sends_empty_sections(tmp_path, check):
     ]
     for table in _sections(result.stdout).values():
         assert check._parse_json_section(table) == {}
+
+
+def test_agent_gives_up_on_a_hanging_ceph_command(tmp_path, check):
+    # Without a limit a hung mgr or monitor blocks the agent for good
+    started = time.monotonic()
+    result = _run(_fake(tmp_path, HANGING_CEPH.format(data=DATA)), CEPH_TIMEOUT="1")
+    assert time.monotonic() - started < 15
+    sections = _sections(result.stdout)
+    assert list(sections) == ["oposs_ceph_status", "oposs_ceph_osd_perf", "oposs_ceph_df"]
+    assert check._parse_json_section(sections["oposs_ceph_osd_perf"]) == {}
+    assert check._parse_json_section(sections["oposs_ceph_status"])["health"]["status"] == "HEALTH_OK"
+    assert check._parse_json_section(sections["oposs_ceph_df"])["pools"]
 
 
 def test_agent_without_ceph_installed(tmp_path):
