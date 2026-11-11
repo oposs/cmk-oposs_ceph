@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- A "Collection interval" of 0 in the "Ceph Monitoring (Linux)" rule, which
+  the rule help explains as "every agent run", was baked as a 0-second cache
+  interval, and the Checkmk agent never runs a plugin deployed that way, so
+  the Ceph services got no data. The plugin now runs on every agent run.
 - "Ceph OSD Status" on a Ceph 14 (Nautilus) cluster always showed "0/0 OSDs
   up and in" and stayed OK, even with OSDs down. It now reads the OSD counts
   of Nautilus too, so down OSDs make the service CRIT and out OSDs WARN.

@@ -38,3 +38,12 @@ def test_interval_from_the_rule(bakery):
 
 def test_no_rule_no_files(bakery):
     assert list(bakery.get_oposs_ceph_files(None)) == []
+
+
+@pytest.mark.parametrize("seconds", [0.0, 0.4])
+def test_interval_zero_runs_the_plugin_on_every_agent_run(bakery, seconds):
+    # The rule help says "0 = every agent run". With an interval the plugin
+    # goes to plugins/<interval>/, and the agent only runs plugins/[1-9]*/,
+    # so plugins/0/ would never run. No interval means plugins/, every run.
+    (plugin,) = bakery.get_oposs_ceph_files({"interval": seconds})
+    assert plugin.kwargs["interval"] is None
