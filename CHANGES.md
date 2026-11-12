@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+
+## 0.2.1 - 2026-11-12
+### Fixed
 - A Ceph monitor or mgr that stopped answering kept the agent plugin waiting
   forever, so the host sent no Ceph data at all. Each ceph command now gets
   30 seconds; a command that runs out of time leaves only the services
